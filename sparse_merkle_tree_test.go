@@ -1,18 +1,20 @@
 package mamamerkle
 
 import (
-	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"encoding/binary"
 	"bytes"
-	"github.com/stretchr/testify/require"
-	"testing"
+	"encoding/binary"
 	"encoding/hex"
+	"testing"
+
+	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-var empty_val = bytes.Repeat([]byte{0x00},32)
+var empty_val = bytes.Repeat([]byte{0x00}, 32)
 
 var _hash = sha3.NewKeccak256()
+
 func _keccak(value []byte) []byte {
 	var buf []byte
 	d := sha3.NewKeccak256()
@@ -23,7 +25,7 @@ func _keccak(value []byte) []byte {
 
 func _keccakInt64(value int64) []byte {
 	var bs = make([]byte, 8)
-	binary.BigEndian.PutUint64(bs,uint64(value))
+	binary.BigEndian.PutUint64(bs, uint64(value))
 	return _keccak(bs)
 }
 
@@ -39,7 +41,6 @@ func decodeHex(s string) []byte {
 
 	return b
 }
-
 
 func TestSizeLimits(t *testing.T) {
 	var leaves = make(map[int64][]byte)
@@ -61,7 +62,7 @@ func TestSMTAllLeavesWithVal(t *testing.T) {
 	leaves[2] = dummy_val
 	leaves[3] = dummy_val
 
-	smt, err := NewSparseMerkleTree(3,leaves)
+	smt, err := NewSparseMerkleTree(3, leaves)
 	require.Nil(t, err)
 
 	mid_level_val := _keccak(append(dummy_val, dummy_val...))
@@ -92,13 +93,13 @@ func TestSMTEmptyLeftLeave(t *testing.T) {
 	require.Equal(t, mid_level_val, smt.root)
 }
 
-func TestSMTEmptyRightLeave(t *testing.T){
+func TestSMTEmptyRightLeave(t *testing.T) {
 	var leaves = make(map[int64][]byte)
 	leaves[0] = dummy_val
 	leaves[2] = dummy_val
 	leaves[3] = dummy_val
 
-	smt, err := NewSparseMerkleTree(3,leaves)
+	smt, err := NewSparseMerkleTree(3, leaves)
 	require.Nil(t, err)
 
 	mid_left_val := _keccak(append(dummy_val, default_hash...))
@@ -107,7 +108,7 @@ func TestSMTEmptyRightLeave(t *testing.T){
 	require.Equal(t, mid_level_val, smt.root)
 }
 
-func TestSMTExceedTreeSize(t *testing.T){
+func TestSMTExceedTreeSize(t *testing.T) {
 	var leaves = make(map[int64][]byte)
 	leaves[0] = dummy_val
 	leaves[1] = dummy_val
@@ -116,13 +117,13 @@ func TestSMTExceedTreeSize(t *testing.T){
 	require.NotNil(t, err)
 }
 
-func TestSMTCreateMerkleProof(t *testing.T){
+func TestSMTCreateMerkleProof(t *testing.T) {
 	var leaves = make(map[int64][]byte)
 	leaves[0] = dummy_val
 	leaves[2] = dummy_val
 	leaves[3] = dummy_val_2
 
-	smt, err := NewSparseMerkleTree(3,leaves)
+	smt, err := NewSparseMerkleTree(3, leaves)
 	require.Nil(t, err)
 
 	mid_left_val := _keccak(append(dummy_val, default_hash...))
@@ -148,7 +149,6 @@ func TestSMTCreateMerkleProof(t *testing.T){
 	require.Equal(t, append(proofBytes, tmp_val...), smt.CreateMerkleProof(int64(3)))
 }
 
-
 func TestSMTVerification(t *testing.T) {
 	slot := int64(2)
 	txHash := decodeHex("cf04ea8bb4ff94066eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
@@ -157,7 +157,7 @@ func TestSMTVerification(t *testing.T) {
 	slot3 := int64(30000)
 	txHash3 := decodeHex("abcaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1c9f40d84d5491f5a7735200de010d84")
 
-	var tx= make(map[int64][]byte)
+	var tx = make(map[int64][]byte)
 	tx[slot] = txHash
 	tx[slot2] = txHash2
 	tx[slot3] = txHash3
@@ -183,7 +183,7 @@ func TestSMTSeriallization(t *testing.T) {
 	slot3 := int64(30000)
 	txHash3 := decodeHex("abcaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1c9f40d84d5491f5a7735200de010d84")
 
-	var tx= make(map[int64][]byte)
+	var tx = make(map[int64][]byte)
 	tx[slot] = txHash
 	tx[slot2] = txHash2
 	tx[slot3] = txHash3
@@ -197,7 +197,6 @@ func TestSMTSeriallization(t *testing.T) {
 	require.Nil(t, err)
 	require.NotNil(t, smt2)
 
-
 	for k, _ := range tx {
 		var proof = smt2.CreateMerkleProof(k)
 		inc, err := smt2.Verify(k, proof)
@@ -205,5 +204,36 @@ func TestSMTSeriallization(t *testing.T) {
 		assert.True(t, inc)
 	}
 
+}
 
+func TestSMTRLPSeriallization(t *testing.T) {
+
+	//os.Exit(1)
+	slot := int64(2)
+	txHash := decodeHex("cf04ea8bb4ff94066eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
+	slot2 := int64(600)
+	txHash2 := decodeHex("abcabcabacbc94566eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
+	slot3 := int64(30000)
+	txHash3 := decodeHex("abcaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1c9f40d84d5491f5a7735200de010d84")
+
+	var tx = make(map[int64][]byte)
+	tx[slot] = txHash
+	tx[slot2] = txHash2
+	tx[slot3] = txHash3
+
+	smt, err := NewSparseMerkleTree(64, tx)
+	require.Nil(t, err)
+	data, err := smt.SerializeRLP()
+	require.Nil(t, err)
+
+	smt2, err := LoadSparseMerkleTreeRLP(data)
+	require.Nil(t, err)
+	require.NotNil(t, smt2)
+
+	for k, _ := range tx {
+		var proof = smt2.CreateMerkleProof(k)
+		inc, err := smt2.Verify(k, proof)
+		require.Nil(t, err)
+		assert.True(t, inc)
+	}
 }

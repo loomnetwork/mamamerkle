@@ -1,28 +1,26 @@
 package mamamerkle
 
 import (
-
+	"bytes"
+	"encoding/binary"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"math"
 	"sort"
+
 	"github.com/cevaris/ordered_map"
 	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"math"
-	"encoding/binary"
-	"bytes"
-	"fmt"
-	"errors"
-	"encoding/json"
-	"encoding/hex"
 )
 
 type SparseMerkleTree struct {
-	depth int64
-	leaves *ordered_map.OrderedMap
-	root []byte
-	tree []*ordered_map.OrderedMap
+	depth        int64
+	leaves       *ordered_map.OrderedMap
+	root         []byte
+	tree         []*ordered_map.OrderedMap
 	defaultNodes [][]byte
-
 }
-
 
 func (smt *SparseMerkleTree) keccak(value []byte) []byte {
 	var buf []byte
@@ -34,11 +32,11 @@ func (smt *SparseMerkleTree) keccak(value []byte) []byte {
 
 func (smt *SparseMerkleTree) CreateDefaultNodes(depth int64) [][]byte {
 
-	defaultHash := smt.keccak(bytes.Repeat([]byte{0x00},32))
+	defaultHash := smt.keccak(bytes.Repeat([]byte{0x00}, 32))
 	defaultNodes := [][]byte{defaultHash}
 
 	for level := int64(1); level < smt.depth; level++ {
-		prevDefault := defaultNodes[level - 1]
+		prevDefault := defaultNodes[level-1]
 		nextDefault := smt.keccak(append(prevDefault, prevDefault...))
 		defaultNodes = append(defaultNodes, nextDefault)
 
@@ -50,12 +48,12 @@ func (smt *SparseMerkleTree) CreateDefaultNodes(depth int64) [][]byte {
 func (smt *SparseMerkleTree) CreateTree(orderedLeaves *ordered_map.OrderedMap, depth int64, defaultNodes [][]byte) []*ordered_map.OrderedMap {
 	tree := []*ordered_map.OrderedMap{orderedLeaves}
 	treeLevel := orderedLeaves
-	for level := int64(0); level < depth - 1; level++ {
+	for level := int64(0); level < depth-1; level++ {
 		nextLevel := ordered_map.NewOrderedMap()
 		prevIndex := int64(-1)
 		levelsIter := treeLevel.IterFunc()
 
-		for KV, ok := levelsIter(); ok; KV, ok = levelsIter()  {
+		for KV, ok := levelsIter(); ok; KV, ok = levelsIter() {
 
 			index, ok := KV.Key.(int64)
 			if !ok {
@@ -66,23 +64,21 @@ func (smt *SparseMerkleTree) CreateTree(orderedLeaves *ordered_map.OrderedMap, d
 				panic("Non []byte value found")
 			}
 
-
-			if index % 2 == 0 {
+			if index%2 == 0 {
 				// If the node is a left node, assume the right sibling is
 				// a default node. In the case right sibling is not default
 				// node, it would override on next round
-				nextLevel.Set(index / 2, smt.keccak(append(value, defaultNodes[level]...)))
+				nextLevel.Set(index/2, smt.keccak(append(value, defaultNodes[level]...)))
 
-			}else{
+			} else {
 				// If the node is a right node, check if its left sibling is
 				// a default node.
-				if index == prevIndex + int64(1) {
+				if index == prevIndex+int64(1) {
 					tmp, _ := treeLevel.Get(prevIndex)
-					nextLevel.Set(index / 2, smt.keccak(append(tmp.([]byte), value...)))
+					nextLevel.Set(index/2, smt.keccak(append(tmp.([]byte), value...)))
 				} else {
-					nextLevel.Set(index / 2, smt.keccak(append(defaultNodes[level], value...)))
+					nextLevel.Set(index/2, smt.keccak(append(defaultNodes[level], value...)))
 				}
-
 
 			}
 
@@ -103,9 +99,9 @@ func (smt *SparseMerkleTree) CreateMerkleProof(leafId int64) []byte {
 	index := leafId
 	proof := []byte("")
 	var proofbits uint64 = 0
-	for level:= int64(0); level < smt.depth - 1; level++{
+	for level := int64(0); level < smt.depth-1; level++ {
 		var siblingIndex int64
-		if index % 2 == 0 {
+		if index%2 == 0 {
 			siblingIndex = index + 1
 		} else {
 			siblingIndex = index - 1
@@ -127,12 +123,12 @@ func (smt *SparseMerkleTree) CreateMerkleProof(leafId int64) []byte {
 }
 
 // Checks if the proof for the leaf at `uid` is valid
-func (smt *SparseMerkleTree) Verify(leafId int64, proof []byte ) (bool, error) {
+func (smt *SparseMerkleTree) Verify(leafId int64, proof []byte) (bool, error) {
 	if ((len(proof) - 8) % 32) != 0 {
-		return  false, errors.New("invalid proof length `len(proof) - 8` must be a multiple of 32")
+		return false, errors.New("invalid proof length `len(proof) - 8` must be a multiple of 32")
 	}
 	if len(proof) > 2056 {
-		return  false, errors.New("invalid proof length Must be less than 2056")
+		return false, errors.New("invalid proof length Must be less than 2056")
 	}
 
 	proofbits := binary.BigEndian.Uint64(proof[0:8])
@@ -140,13 +136,13 @@ func (smt *SparseMerkleTree) Verify(leafId int64, proof []byte ) (bool, error) {
 	p := 8
 
 	if _, ok := smt.leaves.Get(index); ok == false {
-		return  false, errors.New("leaf index out of range")
+		return false, errors.New("leaf index out of range")
 	}
 	computedHashRaw, _ := smt.leaves.Get(index)
 	computedHash := computedHashRaw.([]byte)
 	var proofElement []byte
-	for d := int64(0); d < smt.depth - 1 ; d++ {
-		if (proofbits % 2 == 0){
+	for d := int64(0); d < smt.depth-1; d++ {
+		if proofbits%2 == 0 {
 			proofElement = make([]byte, len(smt.defaultNodes[d]))
 			copy(proofElement, smt.defaultNodes[d])
 		} else {
@@ -154,7 +150,7 @@ func (smt *SparseMerkleTree) Verify(leafId int64, proof []byte ) (bool, error) {
 			copy(proofElement, proof[p:p+32])
 			p += 32
 		}
-		if (index % 2 == 0){
+		if index%2 == 0 {
 			computedHash = smt.keccak(append(computedHash, proofElement...))
 		} else {
 			computedHash = smt.keccak(append(proofElement, computedHash...))
@@ -202,9 +198,12 @@ func (smt *SparseMerkleTree) Serialize() ([]byte, error) {
 	jsonBytes, err := json.Marshal(smtBytes)
 	return jsonBytes, err
 }
+func (smt *SparseMerkleTree) SerializeRLP() ([]byte, error) {
+	return []byte{}, nil
+}
 
 func parseOrderedMap(om_array []interface{}) (*ordered_map.OrderedMap, error) {
-	var om  = ordered_map.NewOrderedMap()
+	var om = ordered_map.NewOrderedMap()
 	for index := range om_array {
 		tmp := om_array[index].(map[string]interface{})
 		bvalue, err := hex.DecodeString(tmp["value"].(string))
@@ -253,14 +252,19 @@ func LoadSparseMerkleTree(data []byte) (*SparseMerkleTree, error) {
 		return nil, err
 	}
 
-	smt := &SparseMerkleTree{depth, sortedLeaves, root, tree, defaultNodes ,}
+	smt := &SparseMerkleTree{depth, sortedLeaves, root, tree, defaultNodes}
 	return smt, nil
+}
+
+func LoadSparseMerkleTreeRLP(data []byte) (*SparseMerkleTree, error) {
+	//smt := &SparseMerkleTree{}
+	return nil, nil
 }
 
 func NewSparseMerkleTree(depth int64, leaves map[int64][]byte) (*SparseMerkleTree, error) {
 	var err error = nil
 	pow := float64(math.Pow(2, float64(depth-1)))
-	if float64(len(leaves)) > pow{
+	if float64(len(leaves)) > pow {
 		return nil, errors.New(fmt.Sprintf("tree with depth %d cannot have %d leaves", depth, len(leaves)))
 	}
 
@@ -277,18 +281,18 @@ func NewSparseMerkleTree(depth int64, leaves map[int64][]byte) (*SparseMerkleTre
 		sortedLeaves.Set(k, leaves[k])
 	}
 
-	smt := &SparseMerkleTree{depth, sortedLeaves, nil, nil, nil ,}
+	smt := &SparseMerkleTree{depth, sortedLeaves, nil, nil, nil}
 	smt.defaultNodes = smt.CreateDefaultNodes(smt.depth)
 
-	if leaves != nil{
+	if leaves != nil {
 		smt.tree = smt.CreateTree(smt.leaves, smt.depth, smt.defaultNodes)
-		root, ok := smt.tree[len(smt.tree) - 1].Get(int64(0))
+		root, ok := smt.tree[len(smt.tree)-1].Get(int64(0))
 		if !ok {
 			return nil, errors.New("root not found")
 		}
 		smt.root = root.([]byte)
-	}else{
-		smt.root = smt.defaultNodes[smt.depth - 1]
+	} else {
+		smt.root = smt.defaultNodes[smt.depth-1]
 	}
 
 	return smt, err
