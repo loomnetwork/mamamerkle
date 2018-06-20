@@ -31,6 +31,15 @@ var default_hash = _keccak(empty_val)
 var dummy_val = _keccakInt64(2)
 var dummy_val_2 = _keccakInt64(3)
 
+func decodeHex(s string) []byte {
+	b, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err)
+	}
+
+	return b
+}
+
 
 func TestSizeLimits(t *testing.T) {
 	var leaves = make(map[int64][]byte)
@@ -139,14 +148,6 @@ func TestSMTCreateMerkleProof(t *testing.T){
 	require.Equal(t, append(proofBytes, tmp_val...), smt.CreateMerkleProof(int64(3)))
 }
 
-func decodeHex(s string) []byte {
-	b, err := hex.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
-
-	return b
-}
 
 func TestSMTVerification(t *testing.T) {
 	slot := int64(2)
@@ -172,3 +173,37 @@ func TestSMTVerification(t *testing.T) {
 	}
 }
 
+func TestSMTSeriallization(t *testing.T) {
+
+	//os.Exit(1)
+	slot := int64(2)
+	txHash := decodeHex("cf04ea8bb4ff94066eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
+	slot2 := int64(600)
+	txHash2 := decodeHex("abcabcabacbc94566eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
+	slot3 := int64(30000)
+	txHash3 := decodeHex("abcaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1c9f40d84d5491f5a7735200de010d84")
+
+	var tx= make(map[int64][]byte)
+	tx[slot] = txHash
+	tx[slot2] = txHash2
+	tx[slot3] = txHash3
+
+	smt, err := NewSparseMerkleTree(64, tx)
+	require.Nil(t, err)
+	data, err := smt.Serialize()
+	require.Nil(t, err)
+
+	smt2, err := LoadSparseMerkleTree(data)
+	require.Nil(t, err)
+	require.NotNil(t, smt2)
+
+
+	for k, _ := range tx {
+		var proof = smt2.CreateMerkleProof(k)
+		inc, err := smt2.Verify(k, proof)
+		require.Nil(t, err)
+		assert.True(t, inc)
+	}
+
+
+}
