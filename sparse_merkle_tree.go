@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"errors"
 	"encoding/json"
+	"encoding/hex"
 )
 
 type SparseMerkleTree struct {
@@ -172,7 +173,7 @@ func (smt *SparseMerkleTree) serializeOrderedMap(om *ordered_map.OrderedMap) []m
 	for KV, ok := levelsIter(); ok; KV, ok = levelsIter() {
 		var kv_bytes = make(map[string]interface{})
 		kv_bytes["key"] = KV.Key.(int64)
-		kv_bytes["value"] = KV.Value.([]byte)
+		kv_bytes["value"] = hex.EncodeToString(KV.Value.([]byte))
 		om_array = append(om_array, kv_bytes)
 	}
 	return om_array
@@ -182,7 +183,7 @@ func (smt *SparseMerkleTree) Serialize() ([]byte, error) {
 
 	var smtBytes = make(map[string]interface{})
 
-	smtBytes["root"] = smt.root
+	smtBytes["root"] = hex.EncodeToString(smt.root)
 	var treeBytes []interface{}
 	for level := range smt.tree {
 		treeBytes = append(treeBytes, smt.serializeOrderedMap(smt.tree[level]))
@@ -191,7 +192,7 @@ func (smt *SparseMerkleTree) Serialize() ([]byte, error) {
 
 	var defaultNodes []interface{}
 	for level := range smt.defaultNodes {
-		defaultNodes = append(defaultNodes, string(smt.defaultNodes[level]))
+		defaultNodes = append(defaultNodes, hex.EncodeToString(smt.defaultNodes[level]))
 	}
 	smtBytes["defaultNodes"] = defaultNodes
 	leavesArray := smt.serializeOrderedMap(smt.leaves)
@@ -202,13 +203,17 @@ func (smt *SparseMerkleTree) Serialize() ([]byte, error) {
 	return jsonBytes, err
 }
 
-func parseOrderedMap(om_array []interface{}) *ordered_map.OrderedMap {
+func parseOrderedMap(om_array []interface{}) (*ordered_map.OrderedMap, error) {
 	var om  = ordered_map.NewOrderedMap()
 	for index := range om_array {
 		tmp := om_array[index].(map[string]interface{})
-		om.Set(int64(tmp["key"].(float64)), []byte(tmp["value"].(string)))
+		bvalue, err := hex.DecodeString(tmp["value"].(string))
+		if err != nil {
+			return nil, err
+		}
+		om.Set(int64(tmp["key"].(float64)), bvalue)
 	}
-	return om
+	return om, nil
 }
 
 func LoadSparseMerkleTree(data []byte) (*SparseMerkleTree, error) {
@@ -218,21 +223,35 @@ func LoadSparseMerkleTree(data []byte) (*SparseMerkleTree, error) {
 		return nil, err
 	}
 	depth := int64(smtBytes["depth"].(float64))
-	root := []byte(smtBytes["root"].(string))
+	root, err := hex.DecodeString(smtBytes["root"].(string))
+	if err != nil {
+		return nil, err
+	}
 	defaultNodesRaw := smtBytes["defaultNodes"].([]interface{})
 	var defaultNodes [][]byte
 	for level := range defaultNodesRaw {
-		defaultNodes = append(defaultNodes, []byte(defaultNodesRaw[level].(string)))
+		bvalue, err := hex.DecodeString(defaultNodesRaw[level].(string))
+		if err != nil {
+			return nil, err
+		}
+		defaultNodes = append(defaultNodes, bvalue)
 	}
 
 	treeRaw := smtBytes["tree"].([]interface{})
 	var tree []*ordered_map.OrderedMap
 	for level := range treeRaw {
-		tree = append(tree, parseOrderedMap(treeRaw[level].([]interface{})))
+		curLevel, err := parseOrderedMap(treeRaw[level].([]interface{}))
+		if err != nil {
+			return nil, err
+		}
+		tree = append(tree, curLevel)
 	}
 
 	sortedLeavesRaw := smtBytes["leaves"].([]interface{})
-	sortedLeaves := parseOrderedMap(sortedLeavesRaw)
+	sortedLeaves, err := parseOrderedMap(sortedLeavesRaw)
+	if err != nil {
+		return nil, err
+	}
 
 	smt := &SparseMerkleTree{depth, sortedLeaves, root, tree, defaultNodes ,}
 	return smt, nil
@@ -274,5 +293,3 @@ func NewSparseMerkleTree(depth int64, leaves map[int64][]byte) (*SparseMerkleTre
 
 	return smt, err
 }
-
-
