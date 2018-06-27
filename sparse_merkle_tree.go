@@ -43,7 +43,7 @@ func (smt *SparseMerkleTree) CreateDefaultNodes(depth int64) [][]byte {
 	defaultHash := smt.keccak(bytes.Repeat([]byte{0x00}, 32))
 	defaultNodes := [][]byte{defaultHash}
 
-	for level := int64(1); level < smt.depth; level++ {
+	for level := int64(1); level < smt.depth+1; level++ {
 		prevDefault := defaultNodes[level-1]
 		nextDefault := smt.keccak(append(prevDefault, prevDefault...))
 		defaultNodes = append(defaultNodes, nextDefault)
@@ -56,7 +56,7 @@ func (smt *SparseMerkleTree) CreateDefaultNodes(depth int64) [][]byte {
 func (smt *SparseMerkleTree) CreateTree(orderedLeaves *ordered_map.OrderedMap, depth int64, defaultNodes [][]byte) []*ordered_map.OrderedMap {
 	tree := []*ordered_map.OrderedMap{orderedLeaves}
 	treeLevel := orderedLeaves
-	for level := int64(0); level < depth-1; level++ {
+	for level := int64(0); level < depth; level++ {
 		nextLevel := ordered_map.NewOrderedMap()
 		prevIndex := int64(-1)
 		levelsIter := treeLevel.IterFunc()
@@ -107,7 +107,7 @@ func (smt *SparseMerkleTree) CreateMerkleProof(leafId int64) []byte {
 	index := leafId
 	proof := []byte("")
 	var proofbits uint64 = 0
-	for level := int64(0); level < smt.depth-1; level++ {
+	for level := int64(0); level < smt.depth; level++ {
 		var siblingIndex int64
 		if index%2 == 0 {
 			siblingIndex = index + 1
@@ -149,7 +149,7 @@ func (smt *SparseMerkleTree) Verify(leafId int64, proof []byte) (bool, error) {
 	computedHashRaw, _ := smt.leaves.Get(index)
 	computedHash := computedHashRaw.([]byte)
 	var proofElement []byte
-	for d := int64(0); d < smt.depth-1; d++ {
+	for d := int64(0); d < smt.depth; d++ {
 		if proofbits%2 == 0 {
 			proofElement = make([]byte, len(smt.defaultNodes[d]))
 			copy(proofElement, smt.defaultNodes[d])
@@ -263,7 +263,8 @@ func LoadSparseMerkleTree(data []byte) (*SparseMerkleTree, error) {
 
 func NewSparseMerkleTree(depth int64, leaves map[int64][]byte) (*SparseMerkleTree, error) {
 	var err error = nil
-	pow := float64(math.Pow(2, float64(depth-1)))
+	//TODO remove float64, then verify integer math
+	pow := float64(math.Pow(2, float64(depth)))
 	if float64(len(leaves)) > pow {
 		return nil, errors.New(fmt.Sprintf("tree with depth %d cannot have %d leaves", depth, len(leaves)))
 	}
@@ -292,7 +293,7 @@ func NewSparseMerkleTree(depth int64, leaves map[int64][]byte) (*SparseMerkleTre
 		}
 		smt.root = root.([]byte)
 	} else {
-		smt.root = smt.defaultNodes[smt.depth-1]
+		smt.root = smt.defaultNodes[smt.depth]
 	}
 
 	return smt, err
