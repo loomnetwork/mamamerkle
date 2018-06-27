@@ -8,6 +8,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/stretchr/testify/assert"
+	"github.com/ethereum/go-ethereum/rlp"
+	"io"
 	"github.com/stretchr/testify/require"
 )
 
@@ -173,9 +175,26 @@ func TestSMTVerification(t *testing.T) {
 	}
 }
 
+type MyCoolType struct {
+	Name string
+	a, b uint
+}
+
+// EncodeRLP writes x as RLP list [a, b] that omits the Name field.
+func (x *MyCoolType) EncodeRLP(w io.Writer) (err error) {
+	// Note: the receiver can be a nil pointer. This allows you to
+	// control the encoding of nil, but it also means that you have to
+	// check for a nil receiver.
+	if x == nil {
+		err = rlp.Encode(w, []uint{0, 0})
+	} else {
+		err = rlp.Encode(w, []uint{x.a, x.b})
+	}
+	return err
+}
+
 func TestSMTSeriallization(t *testing.T) {
 
-	//os.Exit(1)
 	slot := int64(2)
 	txHash := decodeHex("cf04ea8bb4ff94066eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
 	slot2 := int64(600)
