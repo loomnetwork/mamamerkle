@@ -44,10 +44,19 @@ func decodeHex(s string) []byte {
 
 func TestSizeLimits(t *testing.T) {
 	var leaves = make(map[int64][]byte)
-	leaves[0] = empty_val
-	leaves[1] = empty_val
-	_, err := NewSparseMerkleTree(1, leaves)
+	leaves[0] = []byte{0}
+	leaves[1] = []byte{1}
+	_, err := NewSparseMerkleTree(0, leaves)
 	require.NotNil(t, err)
+}
+
+func TestSizeLimits2(t *testing.T) {
+	var leaves2 = make(map[int64][]byte)
+	leaves2[0] = empty_val
+	leaves2[1] = empty_val
+	leaves2[2] = empty_val
+	_, err2 := NewSparseMerkleTree(1, leaves2)
+	require.NotNil(t, err2)
 }
 
 func TestSMTEmptySMT(t *testing.T) {
@@ -62,7 +71,7 @@ func TestSMTAllLeavesWithVal(t *testing.T) {
 	leaves[2] = dummy_val
 	leaves[3] = dummy_val
 
-	smt, err := NewSparseMerkleTree(3, leaves)
+	smt, err := NewSparseMerkleTree(2, leaves)
 	require.Nil(t, err)
 
 	mid_level_val := _keccak(append(dummy_val, dummy_val...))
@@ -71,7 +80,7 @@ func TestSMTAllLeavesWithVal(t *testing.T) {
 }
 
 func TestSMTEmptyLeaves(t *testing.T) {
-	smt, err := NewSparseMerkleTree(3, nil)
+	smt, err := NewSparseMerkleTree(2, nil)
 	require.Nil(t, err)
 	mid_level_val := _keccak(append(default_hash, default_hash...))
 	mid_level_val = _keccak(append(mid_level_val, mid_level_val...))
@@ -88,7 +97,7 @@ func TestSMTEmptyLeftLeave(t *testing.T) {
 	mid_right_val := _keccak(append(dummy_val, dummy_val...))
 	mid_level_val := _keccak(append(mid_left_val, mid_right_val...))
 
-	smt, err := NewSparseMerkleTree(3, leaves)
+	smt, err := NewSparseMerkleTree(2, leaves)
 	require.Nil(t, err)
 	require.Equal(t, mid_level_val, smt.root)
 }
@@ -99,7 +108,7 @@ func TestSMTEmptyRightLeave(t *testing.T) {
 	leaves[2] = dummy_val
 	leaves[3] = dummy_val
 
-	smt, err := NewSparseMerkleTree(3, leaves)
+	smt, err := NewSparseMerkleTree(2, leaves)
 	require.Nil(t, err)
 
 	mid_left_val := _keccak(append(dummy_val, default_hash...))
@@ -108,22 +117,13 @@ func TestSMTEmptyRightLeave(t *testing.T) {
 	require.Equal(t, mid_level_val, smt.root)
 }
 
-func TestSMTExceedTreeSize(t *testing.T) {
-	var leaves = make(map[int64][]byte)
-	leaves[0] = dummy_val
-	leaves[1] = dummy_val
-
-	_, err := NewSparseMerkleTree(1, leaves)
-	require.NotNil(t, err)
-}
-
 func TestSMTCreateMerkleProof(t *testing.T) {
 	var leaves = make(map[int64][]byte)
 	leaves[0] = dummy_val
 	leaves[2] = dummy_val
 	leaves[3] = dummy_val_2
 
-	smt, err := NewSparseMerkleTree(3, leaves)
+	smt, err := NewSparseMerkleTree(2, leaves)
 	require.Nil(t, err)
 
 	mid_left_val := _keccak(append(dummy_val, default_hash...))
