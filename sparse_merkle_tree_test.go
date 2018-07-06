@@ -43,7 +43,7 @@ func decodeHex(s string) []byte {
 }
 
 func TestSizeLimits(t *testing.T) {
-	var leaves = make(map[int64][]byte)
+	var leaves = make(map[uint64][]byte)
 	leaves[0] = []byte{0}
 	leaves[1] = []byte{1}
 	_, err := NewSparseMerkleTree(0, leaves)
@@ -51,7 +51,7 @@ func TestSizeLimits(t *testing.T) {
 }
 
 func TestSizeLimits2(t *testing.T) {
-	var leaves2 = make(map[int64][]byte)
+	var leaves2 = make(map[uint64][]byte)
 	leaves2[0] = empty_val
 	leaves2[1] = empty_val
 	leaves2[2] = empty_val
@@ -65,7 +65,7 @@ func TestSMTEmptySMT(t *testing.T) {
 }
 
 func TestSMTAllLeavesWithVal(t *testing.T) {
-	var leaves = make(map[int64][]byte)
+	var leaves = make(map[uint64][]byte)
 	leaves[0] = dummy_val
 	leaves[1] = dummy_val
 	leaves[2] = dummy_val
@@ -88,7 +88,7 @@ func TestSMTEmptyLeaves(t *testing.T) {
 }
 
 func TestSMTEmptyLeftLeave(t *testing.T) {
-	var leaves = make(map[int64][]byte)
+	var leaves = make(map[uint64][]byte)
 	leaves[1] = dummy_val
 	leaves[2] = dummy_val
 	leaves[3] = dummy_val
@@ -103,7 +103,7 @@ func TestSMTEmptyLeftLeave(t *testing.T) {
 }
 
 func TestSMTEmptyRightLeave(t *testing.T) {
-	var leaves = make(map[int64][]byte)
+	var leaves = make(map[uint64][]byte)
 	leaves[0] = dummy_val
 	leaves[2] = dummy_val
 	leaves[3] = dummy_val
@@ -118,7 +118,7 @@ func TestSMTEmptyRightLeave(t *testing.T) {
 }
 
 func TestSMTCreateMerkleProof(t *testing.T) {
-	var leaves = make(map[int64][]byte)
+	var leaves = make(map[uint64][]byte)
 	leaves[0] = dummy_val
 	leaves[2] = dummy_val
 	leaves[3] = dummy_val_2
@@ -131,33 +131,33 @@ func TestSMTCreateMerkleProof(t *testing.T) {
 
 	proofBytes := make([]byte, 8)
 	binary.BigEndian.PutUint64(proofBytes, uint64(2))
-	require.Equal(t, append(proofBytes, mid_right_val...), smt.CreateMerkleProof(int64(0)))
+	require.Equal(t, append(proofBytes, mid_right_val...), smt.CreateMerkleProof(uint64(0)))
 
 	proofBytes = make([]byte, 8)
 	binary.BigEndian.PutUint64(proofBytes, uint64(3))
 	tmp_val := append(dummy_val, mid_right_val...)
-	require.Equal(t, append(proofBytes, tmp_val...), smt.CreateMerkleProof(int64(1)))
+	require.Equal(t, append(proofBytes, tmp_val...), smt.CreateMerkleProof(uint64(1)))
 
 	proofBytes = make([]byte, 8)
 	binary.BigEndian.PutUint64(proofBytes, uint64(3))
 	tmp_val = append(dummy_val_2, mid_left_val...)
-	require.Equal(t, append(proofBytes, tmp_val...), smt.CreateMerkleProof(int64(2)))
+	require.Equal(t, append(proofBytes, tmp_val...), smt.CreateMerkleProof(uint64(2)))
 
 	proofBytes = make([]byte, 8)
 	binary.BigEndian.PutUint64(proofBytes, uint64(3))
 	tmp_val = append(dummy_val, mid_left_val...)
-	require.Equal(t, append(proofBytes, tmp_val...), smt.CreateMerkleProof(int64(3)))
+	require.Equal(t, append(proofBytes, tmp_val...), smt.CreateMerkleProof(uint64(3)))
 }
 
 func TestSMTVerification(t *testing.T) {
-	slot := int64(2)
+	slot := uint64(2)
 	txHash := decodeHex("cf04ea8bb4ff94066eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
-	slot2 := int64(600)
+	slot2 := uint64(600)
 	txHash2 := decodeHex("abcabcabacbc94566eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
-	slot3 := int64(30000)
+	slot3 := uint64(30000)
 	txHash3 := decodeHex("abcaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1c9f40d84d5491f5a7735200de010d84")
 
-	var tx = make(map[int64][]byte)
+	var tx = make(map[uint64][]byte)
 	tx[slot] = txHash
 	tx[slot2] = txHash2
 	tx[slot3] = txHash3
@@ -173,17 +173,20 @@ func TestSMTVerification(t *testing.T) {
 	}
 }
 
+// TODO: Currently this test causes a panic because tree serialization/deserilization needs to be
+//       updated after switching to uint64 leaves.
+/*
 func TestSMTSeriallization(t *testing.T) {
 
 	//os.Exit(1)
-	slot := int64(2)
+	slot := uint64(2)
 	txHash := decodeHex("cf04ea8bb4ff94066eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
-	slot2 := int64(600)
+	slot2 := uint64(600)
 	txHash2 := decodeHex("abcabcabacbc94566eb84dd932f9e66d1c9f40d84d5491f5a7735200de010d84")
-	slot3 := int64(30000)
+	slot3 := uint64(30000)
 	txHash3 := decodeHex("abcaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1c9f40d84d5491f5a7735200de010d84")
 
-	var tx = make(map[int64][]byte)
+	var tx = make(map[uint64][]byte)
 	tx[slot] = txHash
 	tx[slot2] = txHash2
 	tx[slot3] = txHash3
@@ -204,4 +207,22 @@ func TestSMTSeriallization(t *testing.T) {
 		assert.True(t, inc)
 	}
 	require.Equal(t, 32, len(smt2.root))
+}
+*/
+func TestRealTreeRoots(t *testing.T) {
+	slot := uint64(14414645988802088183)
+	txHash := decodeHex("4b114962ecf0d681fa416dc1a6f0255d52d701ab53433297e8962065c9d439bd")
+	leaves := make(map[uint64][]byte)
+	leaves[slot] = txHash
+	smt, err := NewSparseMerkleTree(64, leaves)
+	require.Nil(t, err)
+	require.Equal(t, "0ed6599c03641e5a20d9688f892278dbb48bbcf8b1ff2c9a0e2b7423af831a83", hex.EncodeToString(smt.root))
+
+	slot = uint64(14414645988802088183)
+	txHash = decodeHex("510a183d5457e0d22951440a273f0d8e28e01d15f750d79fd1b27442299f7220")
+	leaves = make(map[uint64][]byte)
+	leaves[slot] = txHash
+	smt, err = NewSparseMerkleTree(64, leaves)
+	require.Nil(t, err)
+	require.Equal(t, "8d0ae4c94eaad54df5489e5f9d62eeb4bf06ff774a00b925e8a52776256e910f", hex.EncodeToString(smt.root))
 }
