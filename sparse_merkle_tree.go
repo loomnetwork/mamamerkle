@@ -280,7 +280,7 @@ func NewSparseMerkleTree(depth int64, leaves map[uint64][]byte) (*SparseMerkleTr
 	smt := &SparseMerkleTree{depth, sortedLeaves, nil, nil, nil}
 	smt.defaultNodes = smt.CreateDefaultNodes(smt.depth)
 
-	if leaves != nil {
+	if len(leaves) != 0 {
 		smt.tree = smt.CreateTree(smt.leaves, smt.depth, smt.defaultNodes)
 		root, ok := smt.tree[len(smt.tree)-1].Get(uint64(0))
 		if !ok {

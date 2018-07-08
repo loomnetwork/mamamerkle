@@ -60,8 +60,14 @@ func TestSizeLimits2(t *testing.T) {
 }
 
 func TestSMTEmptySMT(t *testing.T) {
-	emptyTree, _ := NewSparseMerkleTree(64, nil)
-	require.Equal(t, 0, emptyTree.leaves.Len())
+	emptyTree1, _ := NewSparseMerkleTree(64, nil)
+	emptyTree2, _ := NewSparseMerkleTree(64, map[uint64][]byte{})
+	for _, emptyTree := range []*SparseMerkleTree{emptyTree1, emptyTree2} {
+		require.Equal(t, 0, emptyTree.leaves.Len())
+		require.Equal(t,
+			"6f35419d1da1260bc0f33d52e8f6d73fc5d672c0dca13bb960b4ae1adec17937",
+			hex.EncodeToString(emptyTree.root))
+	}
 }
 
 func TestSMTAllLeavesWithVal(t *testing.T) {
