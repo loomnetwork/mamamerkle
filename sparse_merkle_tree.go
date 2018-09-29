@@ -36,6 +36,10 @@ func (smt *SparseMerkleTree) Root() []byte {
 	return smt.root
 }
 
+func (smt *SparseMerkleTree) Leaves() *ordered_map.OrderedMap {
+	return smt.leaves
+}
+
 func (smt *SparseMerkleTree) CreateDefaultNodes(depth int64) [][]byte {
 	defaultHash := smt.keccak(bytes.Repeat([]byte{0x00}, 32))
 	defaultNodes := [][]byte{defaultHash}
@@ -95,6 +99,12 @@ func (smt *SparseMerkleTree) CreateTree(orderedLeaves *ordered_map.OrderedMap, d
 func (smt *SparseMerkleTree) CreateMerkleProof(leafId uint64) []byte {
 	// First `depth/8` bytes of the proof are necessary for checking if
 	// we are at a default-node
+
+	// Edge case for empty tree
+	if smt.leaves.Len() == 0 {
+		return make([]byte, 8)
+	}
+
 	index := leafId
 	proof := []byte("")
 	var proofbits uint64
