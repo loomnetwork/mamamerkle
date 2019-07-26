@@ -9,7 +9,7 @@ import (
 	"sort"
 
 	"github.com/cevaris/ordered_map"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
+	"golang.org/x/crypto/sha3"
 )
 
 type SparseMerkleTree struct {
@@ -22,7 +22,7 @@ type SparseMerkleTree struct {
 
 func (smt *SparseMerkleTree) keccak(value []byte) []byte {
 	var buf []byte
-	d := sha3.NewKeccak256()
+	d := sha3.NewLegacyKeccak256()
 	d.Write(value)
 	buf = d.Sum(buf)
 	return buf
